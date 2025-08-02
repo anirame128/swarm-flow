@@ -22,8 +22,9 @@ class SwarmFlow:
         self.tasks[task.name] = task
         return self
     
-    def depends_on(self, task_name, dependency_name):
-        self.tasks[task_name].add_dependency(self.tasks[dependency_name])
+    def depends_on(self, task_name, *dependency_names):
+        for dep_name in dependency_names:
+            self.tasks[task_name].add_dependency(self.tasks[dep_name])
         return self
 
     def _topological_sort(self):
@@ -114,8 +115,8 @@ class SwarmFlow:
         }
 
         try:
-            base_url = os.getenv("API_URL", "http://localhost:3000")
-            api_url = f"{base_url}/api/trace"
+            # Send traces to SwarmFlow backend service
+            api_url = "http://localhost:8000/api/trace"
             res = requests.post(
                 api_url,
                 headers={"Content-Type": "application/json"},
