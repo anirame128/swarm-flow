@@ -1,4 +1,7 @@
 import time
+import requests
+import json
+import os
 from collections import deque
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -94,3 +97,30 @@ class SwarmFlow:
         print(f"  ↳ Status: {task.status}")
         print(f"  ↳ Duration: {task.execution_time_ms} ms")
         print(f"  ↳ Output: {task.output}")
+        if task.metadata:
+            print(f"  ↳ Metadata: {task.metadata}")
+            for key, value in task.metadata.items():
+                print(f"    • {key}: {value}")
+
+        # Send trace to frontend API
+        trace_payload = {
+            "id": task.id,
+            "name": task.name,
+            "status": task.status,
+            "duration_ms": task.execution_time_ms,
+            "output": task.output,
+            "metadata": task.metadata,
+            "dependencies": [dep.name for dep in task.dependencies],
+        }
+
+        try:
+            base_url = os.getenv("API_URL", "http://localhost:3000")
+            api_url = f"{base_url}/api/trace"
+            res = requests.post(
+                api_url,
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(trace_payload)
+            )
+            res.raise_for_status()
+        except Exception as e:
+            print(f"[SwarmFlow] ⚠️ Failed to send trace: {e}")

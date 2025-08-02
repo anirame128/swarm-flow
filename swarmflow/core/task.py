@@ -14,6 +14,7 @@ class Task:
         self.execution_time_ms = 0
         self.retries = retries
         self.failed_due_to_dependency = False
+        self.metadata = {}
     
     def add_dependency(self, task):
         self.dependencies.append(task)
