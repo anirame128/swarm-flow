@@ -128,6 +128,26 @@ def custom_task():
 ### Real-time Monitoring
 SwarmFlow automatically sends task traces to the SwarmFlow backend service at `http://localhost:8000/api/trace` for real-time monitoring and analytics.
 
+**Trace Structure:**
+```json
+{
+  "id": "task-uuid",
+  "run_id": "dag-run-uuid",  // Consistent across all tasks in the same DAG run
+  "name": "task_name",
+  "status": "success|failure|retrying|skipped",
+  "duration_ms": 1234,
+  "output": "task output",
+  "metadata": {
+    "agent": "LLMProcessor",
+    "provider": "Groq",
+    "model": "llama-3-70b",
+    "tokens_used": 150,
+    "cost_usd": 0.000089
+  },
+  "dependencies": ["dep1", "dep2"]
+}
+```
+
 ### Observability
 SwarmFlow automatically provides:
 - **Task execution traces** with OpenTelemetry
@@ -158,6 +178,7 @@ Get comprehensive insights into your multi-agent workflows:
 - **Cost analysis** for LLM usage (auto-calculated)
 - **Workflow visualization** and dependency graphs
 - **Groq metadata extraction** (comprehensive model support with timing and cost analytics)
+- **DAG run tracking** with unique run_id for grouping and analytics
 
 ## 🚀 Deployment Configuration
 

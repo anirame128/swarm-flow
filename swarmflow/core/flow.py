@@ -2,6 +2,7 @@ import time
 import requests
 import json
 import os
+import uuid
 from collections import deque
 from typing import Any
 from opentelemetry import trace
@@ -11,6 +12,7 @@ from swarmflow.core.task import Task
 
 class SwarmFlow:
     def __init__(self):
+        self.run_id = str(uuid.uuid4())  # Unique per DAG run
         trace.set_tracer_provider(TracerProvider())
         tracer = trace.get_tracer(__name__)
         span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
@@ -116,6 +118,7 @@ class SwarmFlow:
 
         trace_payload = {
             "id": task.id,
+            "run_id": self.run_id,  # ✅ Consistent across all tasks in this DAG run
             "name": task.name,
             "status": task.status,
             "duration_ms": task.execution_time_ms,
