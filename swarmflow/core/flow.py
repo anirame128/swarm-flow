@@ -3,6 +3,7 @@ import requests
 import json
 import os
 from collections import deque
+from typing import Any
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
@@ -88,6 +89,7 @@ class SwarmFlow:
                         task.status = "retrying" if attempt < task.retries else "failure"
 
                 task.execution_time_ms = int((time.time() - start) * 1000)
+                self._extract_metadata(task)
                 span.set_attribute("task.status", task.status)
                 span.set_attribute("task.output", str(task.output))
                 span.set_attribute("task.duration_ms", task.execution_time_ms)
@@ -104,13 +106,21 @@ class SwarmFlow:
                 print(f"    • {key}: {value}")
 
         # Send trace to frontend API
+        output_serialized = (
+            task.output.choices[0].message.content 
+            if hasattr(task.output, "choices") else str(task.output)
+        )
+
+        # Clean metadata to remove None values for JSON serialization
+        metadata_clean = self._clean_metadata(task.metadata)
+
         trace_payload = {
             "id": task.id,
             "name": task.name,
             "status": task.status,
             "duration_ms": task.execution_time_ms,
-            "output": task.output,
-            "metadata": task.metadata,
+            "output": output_serialized,  # ✅ fixed - properly serialized
+            "metadata": metadata_clean,  # ✅ cleaned - no None values
             "dependencies": [dep.name for dep in task.dependencies],
         }
 
@@ -125,3 +135,63 @@ class SwarmFlow:
             res.raise_for_status()
         except Exception as e:
             print(f"[SwarmFlow] ⚠️ Failed to send trace: {e}")
+
+    def _extract_metadata(self, task: Task):
+        output = task.output
+
+        if not output or not hasattr(output, "model") or not hasattr(output, "usage"):
+            return
+
+        model = output.model
+        usage = output.usage
+        prompt_tokens = getattr(usage, "prompt_tokens", 0)
+        completion_tokens = getattr(usage, "completion_tokens", 0)
+        total_tokens = getattr(usage, "total_tokens", 0)
+
+        # Timing
+        queue_time = getattr(usage, "queue_time", None)
+        prompt_time = getattr(usage, "prompt_time", None)
+        completion_time = getattr(usage, "completion_time", None)
+        total_time = getattr(usage, "total_time", None)
+
+        # Cost calculation based on Groq pricing
+        cost_usd = self._estimate_cost_groq(model, prompt_tokens, completion_tokens)
+
+        task.metadata.update({
+            "agent": "LLMProcessor",
+            "provider": "Groq",
+            "model": model,
+            "tokens_used": total_tokens,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "cost_usd": cost_usd,
+            "queue_time_s": queue_time,
+            "prompt_time_s": prompt_time,
+            "completion_time_s": completion_time,
+            "total_time_s": total_time
+        })
+
+    def _estimate_cost_groq(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        pricing = {
+            "llama-4-scout-17b-16e-instruct": (0.11, 0.34),
+            "llama-4-maverick-17b-128e-instruct": (0.20, 0.60),
+            "llama-guard-4-12b": (0.20, 0.20),
+            "deepseek-r1-distill": (0.75, 0.99),
+            "qwen3-32b": (0.29, 0.59),
+            "mistral-saba-24b": (0.79, 0.79),
+            "llama-3.3-70b": (0.59, 0.79),
+            "llama-3.1-8b": (0.05, 0.08),
+            "llama-3-70b": (0.59, 0.79),
+            "llama-3-8b": (0.05, 0.08),
+            "gemma-2-9b": (0.20, 0.20),
+            "llama-guard-3-8b": (0.20, 0.20),
+        }
+
+        # Normalize model name (remove provider prefix if present)
+        normalized_model = model.split("/")[-1].lower()
+        input_price, output_price = pricing.get(normalized_model, (0.0, 0.0))
+        return round((input_tokens * input_price + output_tokens * output_price) / 1_000_000, 6)
+
+    def _clean_metadata(self, obj: dict[str, Any]) -> dict:
+        """Remove None values from metadata for JSON serialization"""
+        return {k: v for k, v in obj.items() if v is not None}

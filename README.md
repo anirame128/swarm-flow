@@ -77,12 +77,52 @@ flow.add(step3)
 flow.add(final_step).depends_on("final_step", "step1", "step2", "step3")
 ```
 
+### Auto-Extracted Groq Metadata
+```python
+from groq import Groq
+
+@swarm_task
+def llm_task():
+    # This will automatically extract metadata from Groq responses
+    client = Groq()
+    response = client.chat.completions.create(
+        model="llama-3-70b",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+    return response
+
+# SwarmFlow automatically detects and extracts:
+# - Model name (llama-3-70b, llama-4-scout-17b, etc.)
+# - Provider (Groq)
+# - Token usage (prompt + completion tokens)
+# - Precise cost calculation (USD)
+# - Timing metrics (queue, prompt, completion, total time)
+# - All added to task.metadata automatically
+
+# Example output with metadata:
+# [SwarmFlow] Task: llm_task
+#   ↳ Status: success
+#   ↳ Duration: 1234 ms
+#   ↳ Output: <Groq ChatCompletion object>
+#   ↳ Metadata: {'agent': 'LLMProcessor', 'provider': 'Groq', 'model': 'llama-3-70b', 'tokens_used': 150, 'cost_usd': 0.000089, 'queue_time_s': 0.1, 'prompt_time_s': 0.5, 'completion_time_s': 0.8, 'total_time_s': 1.4}
+```
+
 ### Retry Logic
 ```python
 @swarm_task(retries=3)
 def unreliable_task():
     # This task will retry up to 3 times on failure
     pass
+```
+
+### Custom Metadata
+```python
+@swarm_task
+def custom_task():
+    # You can add custom metadata to tasks
+    task = custom_task._task
+    task.metadata["custom_field"] = "custom_value"
+    return "Task completed"
 ```
 
 ### Real-time Monitoring
@@ -94,6 +134,7 @@ SwarmFlow automatically provides:
 - **Performance metrics** (execution time, success rates)
 - **Dependency visualization** and cycle detection
 - **Error tracking** and failure propagation
+- **Auto-extracted Groq metadata** (model, provider, token usage, precise cost calculation, timing metrics)
 
 ## 🏗️ Architecture
 
@@ -114,8 +155,9 @@ Get comprehensive insights into your multi-agent workflows:
 - **Real-time execution** monitoring
 - **Performance analytics** and optimization
 - **Error tracking** and debugging
-- **Cost analysis** for LLM usage
+- **Cost analysis** for LLM usage (auto-calculated)
 - **Workflow visualization** and dependency graphs
+- **Groq metadata extraction** (comprehensive model support with timing and cost analytics)
 
 ## 🚀 Deployment Configuration
 

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2025-01-02
+
+### Fixed
+- **Metadata serialization**: Added `_clean_metadata()` method to remove None values from metadata before JSON serialization
+- **Trace payload**: Fixed metadata preservation in trace payloads sent to backend
+
+## [0.1.7] - 2025-01-02
+
+### Fixed
+- **JSON serialization**: Fixed trace payload serialization to handle Groq ChatCompletion objects properly
+- **Output extraction**: Added proper extraction of message content from LLM response objects
+
+## [0.1.6] - 2025-01-02
+
+### Fixed
+- **Groq attribute access**: Fixed usage object attribute access to use `getattr()` instead of dict-style access
+- **Model name normalization**: Added proper model name normalization to handle provider prefixes (e.g., "meta-llama/llama-3-70b" → "llama-3-70b")
+
+## [0.1.5] - 2025-01-02
+
+### Changed
+- **Groq-focused metadata extraction**: Replaced OpenAI/Anthropic support with comprehensive Groq metadata extraction including timing metrics and precise cost calculation
+- **Enhanced cost calculation**: Added support for all Groq models with accurate pricing per million tokens
+
+## [0.1.4] - 2025-01-02
+
+### Added
+- **Auto-extracted Groq metadata**: Automatically detects and extracts model, provider, token usage, precise cost calculation, and timing metrics from Groq responses
+- **Enhanced observability**: Groq metadata is automatically added to task traces and monitoring dashboard
+
 ## [0.1.3] - 2025-01-02
 
 ### Changed
@@ -35,7 +65,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive error handling and logging
 - `@swarm_task` decorator for easy agent function definition
 - `SwarmFlow` class for workflow orchestration
-- **Multiple dependency support**: `depends_on()` now accepts multiple dependencies in a single call
 
 ### Features
 - Multi-agent workflow orchestration
