@@ -37,7 +37,7 @@ def display_result(result):
     print(f"Final result: {result}")
 
 # Create workflow
-flow = SwarmFlow()
+flow = SwarmFlow(api_key="sk_abc123...")  # ✅ Pass your API key
 flow.add(fetch_data)
 flow.add(process_data).depends_on("process_data", "fetch_data")
 flow.add(display_result).depends_on("display_result", "process_data")
@@ -70,7 +70,7 @@ def final_step(step1_result, step2_result, step3_result):
     return f"Combined: {step1_result}, {step2_result}, {step3_result}"
 
 # Create workflow with multiple dependencies
-flow = SwarmFlow()
+flow = SwarmFlow(api_key="sk_abc123...")  # ✅ Pass your API key
 flow.add(step1)
 flow.add(step2)
 flow.add(step3)
@@ -128,6 +128,26 @@ def custom_task():
 ### Real-time Monitoring
 SwarmFlow automatically sends task traces to the SwarmFlow backend service at `http://localhost:8000/api/trace` for real-time monitoring and analytics.
 
+**Trace Structure:**
+```json
+{
+  "id": "task-uuid",
+  "run_id": "dag-run-uuid",  // Consistent across all tasks in the same DAG run
+  "name": "task_name",
+  "status": "success|failure|retrying|skipped",
+  "duration_ms": 1234,
+  "output": "task output",
+  "metadata": {
+    "agent": "LLMProcessor",
+    "provider": "Groq",
+    "model": "llama-3-70b",
+    "tokens_used": 150,
+    "cost_usd": 0.000089
+  },
+  "dependencies": ["dep1", "dep2"]
+}
+```
+
 ### Observability
 SwarmFlow automatically provides:
 - **Task execution traces** with OpenTelemetry
@@ -158,9 +178,23 @@ Get comprehensive insights into your multi-agent workflows:
 - **Cost analysis** for LLM usage (auto-calculated)
 - **Workflow visualization** and dependency graphs
 - **Groq metadata extraction** (comprehensive model support with timing and cost analytics)
+- **DAG run tracking** with unique run_id for grouping and analytics
 
 ## 🚀 Deployment Configuration
 
+### API Key Authentication
+SwarmFlow supports API key authentication for secure trace reporting:
+
+```python
+# Option 1: Pass API key directly
+flow = SwarmFlow(api_key="sk_abc123...")
+
+# Option 2: Use environment variable
+export SWARMFLOW_API_KEY="sk_abc123..."
+flow = SwarmFlow()  # Automatically picks up from environment
+```
+
+### Backend Configuration
 SwarmFlow automatically sends traces to `http://localhost:8000/api/trace`. For production deployment, update the backend URL in the SDK code to point to your centralized backend service.
 
 ## 🤝 Contributing

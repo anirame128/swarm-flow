@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-01-02
+
+### Added
+- **API key authentication**: Added support for API key authentication in trace reporting
+- **Environment variable support**: Can use `SWARMFLOW_API_KEY` environment variable as fallback
+- **Secure trace reporting**: All POST requests to backend now include `x-api-key` header when API key is provided
+
+## [0.1.9] - 2025-01-02
+
+### Added
+- **DAG run tracking**: Added unique `run_id` that's consistent across all tasks in a single DAG run
+- **Enhanced trace structure**: Trace payloads now include `run_id` for better grouping and analytics
+
 ## [0.1.8] - 2025-01-02
 
 ### Fixed
