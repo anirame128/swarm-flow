@@ -11,8 +11,9 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProces
 from swarmflow.core.task import Task
 
 class SwarmFlow:
-    def __init__(self):
+    def __init__(self, api_key: str | None = None):
         self.run_id = str(uuid.uuid4())  # Unique per DAG run
+        self.api_key = api_key or os.getenv("SWARMFLOW_API_KEY")  # ✅ API key for authentication
         trace.set_tracer_provider(TracerProvider())
         tracer = trace.get_tracer(__name__)
         span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
@@ -130,9 +131,15 @@ class SwarmFlow:
         try:
             # Send traces to SwarmFlow backend service
             api_url = "http://localhost:8000/api/trace"
+            
+            # Prepare headers with API key if available
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["x-api-key"] = self.api_key  # ✅ Pass API key for authentication
+            
             res = requests.post(
                 api_url,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
                 data=json.dumps(trace_payload)
             )
             res.raise_for_status()
