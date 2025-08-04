@@ -1,4 +1,3 @@
-from .core.flow import SwarmFlow
-from .core.decorator import swarm_task
+from .core.task import swarm_task, run
 
-__all__ = ["SwarmFlow", "swarm_task"]
+__all__ = ["swarm_task", "run"]

@@ -4,8 +4,9 @@ A distributed multi-agent orchestration framework for building scalable AI workf
 
 ## 🚀 Features
 
+- **Dead-Simple API**: Minimal `@swarm_task` decorator and `run()` function
+- **Auto-Dependency Inference**: Dependencies automatically inferred from function parameters
 - **Agent Orchestration**: Create complex workflows with multiple AI agents
-- **Dependency Management**: Define task dependencies with automatic execution ordering
 - **Retry Logic**: Built-in retry mechanisms for resilient agent execution
 - **Observability**: OpenTelemetry integration for tracing and monitoring
 - **Error Handling**: Graceful failure propagation and recovery
@@ -22,34 +23,40 @@ pip install swarmflow
 ## 🎯 Quick Start
 
 ```python
-from swarmflow import SwarmFlow, swarm_task
+from swarmflow import swarm_task, run
 
 @swarm_task
 def fetch_data():
     return "Some data from API"
 
 @swarm_task
-def process_data(data):
-    return f"Processed: {data}"
+def process_data(fetch_data):
+    return f"Processed: {fetch_data}"
 
 @swarm_task
-def display_result(result):
-    print(f"Final result: {result}")
+def display_result(process_data):
+    print(f"Final result: {process_data}")
 
-# Create workflow
-flow = SwarmFlow(api_key="sk_abc123...")  # ✅ Pass your API key
-flow.add(fetch_data)
-flow.add(process_data).depends_on("process_data", "fetch_data")
-flow.add(display_result).depends_on("display_result", "process_data")
-
-# You can also specify multiple dependencies at once:
-# flow.add(step4).depends_on("step4", "step2", "step3")
-
-# Run workflow
-flow.run()
+# Run workflow - that's it!
+run()
 ```
 
+**That's it!** No complex setup, no manual dependency management. SwarmFlow automatically:
+- ✅ Registers your tasks
+- ✅ Infers dependencies from function parameters
+- ✅ Executes in the correct order
+- ✅ Handles retries and errors
+- ✅ Sends traces to your dashboard
+
 ## 🔧 Advanced Usage
+
+### Retry Logic
+```python
+@swarm_task(retries=3)
+def unreliable_task():
+    # This task will retry up to 3 times on failure
+    pass
+```
 
 ### Multiple Dependencies
 ```python
@@ -66,15 +73,11 @@ def step3():
     return "Step 3 completed"
 
 @swarm_task
-def final_step(step1_result, step2_result, step3_result):
-    return f"Combined: {step1_result}, {step2_result}, {step3_result}"
+def final_step(step1, step2, step3):
+    # Dependencies automatically inferred from parameter names
+    return f"Combined: {step1}, {step2}, {step3}"
 
-# Create workflow with multiple dependencies
-flow = SwarmFlow(api_key="sk_abc123...")  # ✅ Pass your API key
-flow.add(step1)
-flow.add(step2)
-flow.add(step3)
-flow.add(final_step).depends_on("final_step", "step1", "step2", "step3")
+run()
 ```
 
 ### Auto-Extracted Groq Metadata
@@ -107,22 +110,19 @@ def llm_task():
 #   ↳ Metadata: {'agent': 'LLMProcessor', 'provider': 'Groq', 'model': 'llama-3-70b', 'tokens_used': 150, 'cost_usd': 0.000089, 'queue_time_s': 0.1, 'prompt_time_s': 0.5, 'completion_time_s': 0.8, 'total_time_s': 1.4}
 ```
 
-### Retry Logic
-```python
-@swarm_task(retries=3)
-def unreliable_task():
-    # This task will retry up to 3 times on failure
-    pass
-```
+### API Key Configuration
+SwarmFlow automatically handles API keys with Martian-style simplicity:
 
-### Custom Metadata
 ```python
-@swarm_task
-def custom_task():
-    # You can add custom metadata to tasks
-    task = custom_task._task
-    task.metadata["custom_field"] = "custom_value"
-    return "Task completed"
+# Option 1: Set environment variable
+export SWARMFLOW_API_KEY="sk_abc123..."
+run()  # Automatically uses key from environment
+
+# Option 2: Pass directly
+run(api_key="sk_abc123...")
+
+# Option 3: No key (logs warning but continues)
+run()  # Shows warning but executes normally
 ```
 
 ### Real-time Monitoring
@@ -158,13 +158,13 @@ SwarmFlow automatically provides:
 
 ## 🏗️ Architecture
 
-SwarmFlow is designed for **production multi-agent systems**:
+SwarmFlow is designed for **production multi-agent systems** with dead-simple usage:
 
 ```
-User's Agent Functions → @swarm_task decorator → SwarmFlow Engine → Observability Dashboard
+User's Agent Functions → @swarm_task decorator → run() → Observability Dashboard
 ```
 
-- **Lightweight**: Minimal overhead on your agent functions
+- **Minimal**: Just decorator + run function
 - **Scalable**: Handles complex dependency graphs
 - **Observable**: Real-time monitoring and debugging
 - **Resilient**: Built-in retry logic and error handling
@@ -186,12 +186,15 @@ Get comprehensive insights into your multi-agent workflows:
 SwarmFlow supports API key authentication for secure trace reporting:
 
 ```python
-# Option 1: Pass API key directly
-flow = SwarmFlow(api_key="sk_abc123...")
-
-# Option 2: Use environment variable
+# Option 1: Environment variable (recommended)
 export SWARMFLOW_API_KEY="sk_abc123..."
-flow = SwarmFlow()  # Automatically picks up from environment
+run()  # Automatically picks up from environment
+
+# Option 2: Pass directly
+run(api_key="sk_abc123...")
+
+# Option 3: No authentication (logs warning but continues)
+run()  # Shows warning but executes normally
 ```
 
 ### Backend Configuration
@@ -207,4 +210,14 @@ For detailed documentation, visit: [https://github.com/anirame128/swarmflow](htt
 
 ## 📄 License
 
-MIT License - see [LICENSE](https://github.com/anirame128/swarmflow/blob/main/LICENSE) file for details.
+### SDK License
+The SwarmFlow SDK is licensed under the MIT License - see [LICENSE](https://github.com/anirame128/swarmflow/blob/main/LICENSE) file for details.
+
+### Backend Services
+SwarmFlow backend services, dashboard, and infrastructure require separate service agreements and API keys. The SDK is designed to work with official SwarmFlow backend services only.
+
+**Why this model?**
+- ✅ **Free SDK**: Developers can use the SDK without restrictions
+- ✅ **Paid Services**: Backend services and dashboard require API keys
+- ✅ **Industry Standard**: Follows the same model as Google Maps, Stripe, AWS SDKs
+- ✅ **Developer Friendly**: Maximizes adoption while protecting your business model
