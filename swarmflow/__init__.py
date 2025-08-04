@@ -1,4 +1,5 @@
-from .core.task import swarm_task, run
+from .core.task import swarm_task
+from .core.runner import run
 from .core.flow import SwarmFlow
 from .hooks import (
     write_output_to_memory,

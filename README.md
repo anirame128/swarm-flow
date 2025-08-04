@@ -132,11 +132,8 @@ run()  # Shows warning but executes normally
 SwarmFlow now includes a powerful hooks system for custom orchestration logic and shared memory for cross-task state management:
 
 ```python
-from swarmflow import swarm_task, run, SwarmFlow
+from swarmflow import swarm_task, run
 from swarmflow.hooks import write_output_to_memory, read_memory_into_arg, log_input_output
-
-# Create a flow with shared memory
-flow = SwarmFlow()
 
 @swarm_task(before=log_input_output()[0], after=log_input_output()[1])
 def fetch_data():
@@ -151,8 +148,8 @@ def display_result(process_data, input_data=None):
     print(f"Final result: {process_data}")
     print(f"From memory: {input_data}")
 
-# Add tasks to flow and run
-flow.add(fetch_data).add(process_data).add(display_result).run()
+# Run workflow - that's it!
+run()
 ```
 
 **Available Hooks:**
@@ -173,13 +170,24 @@ flow.add(fetch_data).add(process_data).add(display_result).run()
 Set DAG-level policies for cost limits, abort conditions, and validation:
 
 ```python
+from swarmflow import swarm_task, run, SwarmFlow
+
+# Create flow for policy configuration
 flow = SwarmFlow()
 flow.set_policy("max_cost", 0.10)  # Abort if total cost > $0.10
 flow.set_policy("abort_on_flag", "error_detected")  # Abort if flag is True
 flow.set_policy("require_outputs", ["final_result"])  # Abort if missing outputs
 
+@swarm_task
+def task1():
+    return "Task 1 result"
+
+@swarm_task
+def task2(task1):
+    return "Task 2 result"
+
 # Run with policies enforced
-flow.add(task1).add(task2).run()
+run()
 ```
 
 ### Real-time Monitoring

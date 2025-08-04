@@ -37,6 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced Task Execution**: Tasks now support hook execution at different lifecycle stages
 - **Improved Flow Context**: Tasks automatically get access to flow context for memory and policy access
 - **Enhanced Observability**: Trace payloads include shared memory state and active policies
+- **Simplified API**: Removed redundant `.add()` and `.depends_on()` methods from SwarmFlow class
+  - SwarmFlow now focuses only on shared memory and policy enforcement
+  - Task execution is handled entirely by the global TASK_REGISTRY and `run()` function
+  - Eliminates API surface area and reduces complexity
+  - Maintains elegant `@swarm_task + run()` flow without redundant methods
+- **Modular Architecture**: Split monolithic task.py into focused modules:
+  - `task.py`: Task class and swarm_task decorator only
+  - `runner.py`: Main execution logic and workflow orchestration
+  - `telemetry.py`: Tracing, logging, and observability
+  - `policy.py`: Run status finalization and policy enforcement
+  - `utils.py`: Shared utilities (topological_sort, validation, mode enforcement)
+- **Enhanced Validation**: Added dependency validation to catch typos and missing tasks
+- **Mode Enforcement**: Added runtime guard to prevent mixing different orchestration modes
 
 ## [0.3.4] - 2025-01-04
 
