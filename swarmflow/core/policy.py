@@ -76,12 +76,22 @@ def finalize_run_status(
                     headers=headers,
                     data=json.dumps({
                         "run_id": run_id,
-                        "memory": memory,
-                        "policy": policy
+                        "memory": _safe_dict(memory),
+                        "policy": _safe_dict(policy)
                     })
                 )
                 res.raise_for_status()
             except Exception as e:
                 print(f"[SwarmFlow] ⚠️ Failed to finalize memory/policy: {e}")
     except Exception as e:
-        print(f"[SwarmFlow] ⚠️ Failed to update run status: {e}") 
+        print(f"[SwarmFlow] ⚠️ Failed to update run status: {e}")
+
+def _safe_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Make dictionary JSON serializable by converting non-serializable values to strings."""
+    def make_jsonable(v):
+        try:
+            json.dumps(v)
+            return v
+        except:
+            return str(v)
+    return {k: make_jsonable(v) for k, v in d.items()} 

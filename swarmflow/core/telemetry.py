@@ -40,10 +40,16 @@ def log_trace(
         memory: Shared memory state
         policy: Active policy rules
     """
-    output = (
-        task.output.choices[0].message.content 
-        if hasattr(task.output, "choices") else str(task.output)
-    )
+    def _safe_output(obj):
+        """Safely extract content from ChatCompletion objects or convert to string."""
+        try:
+            if hasattr(obj, "choices") and isinstance(obj.choices, list) and len(obj.choices) > 0:
+                return obj.choices[0].message.content
+            return str(obj)
+        except Exception as e:
+            return f"[SwarmFlow] Output serialization failed: {e}"
+    
+    output = _safe_output(task.output)
     
     trace_payload = {
         "id": task.id,
@@ -61,20 +67,31 @@ def log_trace(
         headers = {"Content-Type": "application/json"}
         if api_key:
             headers["x-api-key"] = api_key
-            requests.post(
+            res = requests.post(
                 "http://localhost:8000/api/trace", 
                 headers=headers, 
                 data=json.dumps({
                     "run_id": run_id,
                     "trace": trace_payload,
-                    "flow_memory": memory or {},
-                    "flow_policy": policy or {}
+                    "flow_memory": _safe_dict(memory or {}),
+                    "flow_policy": _safe_dict(policy or {})
                 })
             )
+            print(f"[SwarmFlow] Trace post response: {res.status_code} {res.text}")
         else:
             print("[SwarmFlow] ⚠️ No API key provided. Skipping trace upload.")
     except Exception as e:
         print(f"[SwarmFlow] Failed to send trace: {e}")
+
+def _safe_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Make dictionary JSON serializable by converting non-serializable values to strings."""
+    def make_jsonable(v):
+        try:
+            json.dumps(v)
+            return v
+        except:
+            return str(v)
+    return {k: make_jsonable(v) for k, v in d.items()}
 
 def _clean_metadata(obj: Dict[str, Any]) -> Dict[str, Any]:
     """Remove None values from metadata for JSON serialization."""

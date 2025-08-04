@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2025-01-04
+
+### Fixed
+- **JSON Serialization Error**: Fixed `Object of type ChatCompletion is not JSON serializable`
+  - Added `_safe_output()` function to safely extract content from ChatCompletion objects
+  - Added `_safe_dict()` function to make dictionaries JSON serializable
+  - Enhanced error handling with detailed logging for trace uploads
+  - Fixed both trace logging and memory/policy finalization serialization
+  - Added response status logging for better debugging
+
 ## [0.4.3] - 2025-01-04
 
 ### Fixed
