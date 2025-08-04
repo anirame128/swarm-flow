@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2025-01-04
+
+### Fixed
+- **TypeError in utils.py**: Fixed `NameError: name 'Task' is not defined` in topological_sort function
+  - Added proper import of `Task` class in `utils.py`
+  - Updated type hints to use imported `Task` directly
+  - Resolves runtime import errors in dependency resolution
+
 ## [0.4.2] - 2025-01-04
 
 ### Fixed

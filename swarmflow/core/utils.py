@@ -5,11 +5,12 @@ Shared utilities for task orchestration, dependency resolution, and validation.
 """
 
 from typing import List, TYPE_CHECKING
+from .task import Task
 
 if TYPE_CHECKING:
-    from .task import Task
+    pass  # Task is now imported directly
 
-def topological_sort(tasks: List["Task"]) -> List["Task"]:
+def topological_sort(tasks: List[Task]) -> List[Task]:
     """
     Perform topological sort on tasks based on their dependencies.
     
@@ -45,7 +46,7 @@ def topological_sort(tasks: List["Task"]) -> List["Task"]:
 
     return ordering
 
-def validate_dependencies(tasks: List["Task"], name_to_task: dict) -> None:
+def validate_dependencies(tasks: List[Task], name_to_task: dict) -> None:
     """
     Validate that all task dependencies exist in the registry.
     
