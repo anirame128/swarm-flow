@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2025-01-04
+
+### Fixed
+- **Run status update bug**: Added missing `_finalize_run_status()` functionality to the new refactored API
+  - Run status now properly updates from "running" to "completed"/"failed"/"partial" in database
+  - Added PATCH request to `/api/runs/update-status` endpoint
+  - Includes proper API key authentication and error handling
+  - Same logic as old API: "completed" if all tasks succeed, "failed" if any fail, "partial" otherwise
+
 ## [0.3.3] - 2025-01-04
 
 ### Changed

@@ -117,6 +117,9 @@ def run(api_key: str | None = None):
             span.set_attribute("task.duration_ms", task.execution_time_ms)
             span.set_attribute("task.output", str(task.output))
 
+    # Finalize run status
+    _finalize_run_status(TASK_REGISTRY, run_id, api_key)
+
 def _log_trace(task: Task, run_id: str, api_key: str | None):
     output = (
         task.output.choices[0].message.content 
@@ -182,6 +185,31 @@ def _setup_tracer():
     tracer = trace.get_tracer(__name__)
     trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
     return tracer
+
+def _finalize_run_status(tasks, run_id: str, api_key: str | None):
+    statuses = [task.status for task in tasks]
+    if all(s == "success" for s in statuses):
+        run_status = "completed"
+    elif any(s == "failure" for s in statuses):
+        run_status = "failed"
+    else:
+        run_status = "partial"
+
+    try:
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["x-api-key"] = api_key
+        res = requests.patch(
+            "http://localhost:8000/api/runs/update-status",
+            headers=headers,
+            data=json.dumps({
+                "run_id": run_id,
+                "status": run_status,
+            })
+        )
+        res.raise_for_status()
+    except Exception as e:
+        print(f"[SwarmFlow] ⚠️ Failed to update run status: {e}")
 
 def _clean(d: dict[str, Any]):
     return {k: v for k, v in d.items() if v is not None}
