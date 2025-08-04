@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2025-01-04
+
+### Changed
+- **Major API Refactoring**: Completely redesigned SwarmFlow for Martian-style simplicity
+- **Minimal API**: Replaced complex `SwarmFlow` class with dead-simple `@swarm_task` and `run()` functions
+- **Auto-dependency inference**: Dependencies are now automatically inferred from function parameter names
+- **Global task registry**: Tasks are automatically registered when decorated with `@swarm_task`
+- **Smart API key handling**: Automatically uses `SWARMFLOW_API_KEY` from environment, with graceful fallback
+
+### Added
+- **New minimal API**: `from swarmflow import swarm_task, run`
+- **Parameter-based dependencies**: Function parameters automatically become dependencies
+- **Martian-style simplicity**: No manual dependency management required
+- **Environment variable support**: `SWARMFLOW_API_KEY` automatically detected from `.env`
+
+### Removed
+- **SwarmFlow class**: Replaced with functional `run()` approach
+- **Manual dependency management**: No more `.depends_on()` calls needed
+- **Complex setup**: Simplified to just decorator + run
+
+### Example of new API:
+```python
+from swarmflow import swarm_task, run
+
+@swarm_task
+def seed():
+    return "Summarize this: SwarmFlow is awesome"
+
+@swarm_task(retries=1)
+def summarize(seed):
+    return ask_llm(seed)
+
+@swarm_task
+def extract_summary(summarize):
+    return summarize.choices[0].message.content
+
+run()  # That's it!
+```
+
 ## [0.3.2] - 2025-01-02
 
 ### Fixed
