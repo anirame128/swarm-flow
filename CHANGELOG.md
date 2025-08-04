@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2025-01-02
+
+### Fixed
+- **Task initialization bug**: Fixed crash when accessing `task.current_retry` for skipped tasks or tasks with no retries
+  - Added safe fallback: `getattr(task, "current_retry", 0)` in `_log()` method
+  - Added `self.current_retry = 0` initialization in `Task.__init__()` constructor
+  - Ensures all tasks have consistent retry tracking regardless of execution path
+
+## [0.3.1] - 2025-01-02
+
+### Fixed
+- **Retry count tracking**: Fixed retry count logic to accurately report attempts taken vs retries used
+  - For successful tasks: reports attempts taken to succeed
+  - For failed tasks: reports total retries used
+  - Previously always showed 0 due to logging only after retry loop completion
+
+## [0.3.0] - 2025-01-02
+
+### Added
+- **Run status persistence**: Added `_finalize_run_status()` method to compute and persist overall DAG run status
+- **Retry count tracking**: Each task trace now includes `retry_count` for better debugging and monitoring
+- **Enhanced run-level status**: Automatic computation of run status:
+  - `"completed"` if all tasks are successful
+  - `"failed"` if any task fails
+  - `"partial"` if some succeed and some fail/skipped
+- **Run status API integration**: PATCH requests to `/api/runs/update-status` to persist run-level status
+- **Resumption preparation**: Foundation for future workflow resumption capabilities
+
+### Changed
+- **Enhanced task execution**: Added `current_retry` tracking during retry loops
+- **Improved trace payload**: Trace payloads now include retry count for each task execution
+
 ## [0.2.0] - 2025-01-02
 
 ### Added

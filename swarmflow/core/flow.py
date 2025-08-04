@@ -57,6 +57,31 @@ class SwarmFlow:
 
         return ordering
     
+    def _finalize_run_status(self):
+        statuses = [task.status for task in self.tasks.values()]
+        if all(s == "success" for s in statuses):
+            run_status = "completed"
+        elif any(s == "failure" for s in statuses):
+            run_status = "failed"
+        else:
+            run_status = "partial"
+
+        try:
+            res = requests.patch(
+                "http://localhost:8000/api/runs/update-status",
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": self.api_key or ""
+                },
+                data=json.dumps({
+                    "run_id": self.run_id,
+                    "status": run_status,
+                })
+            )
+            res.raise_for_status()
+        except Exception as e:
+            print(f"[SwarmFlow] ⚠️ Failed to update run status: {e}")
+
     def run(self):
         ordered_tasks = self._topological_sort()
 
@@ -77,6 +102,7 @@ class SwarmFlow:
 
                 success = False
                 for attempt in range(task.retries + 1):
+                    task.current_retry = attempt  # NEW LINE
                     try:
                         inputs = [dep.output for dep in task.dependencies]
                         # Only pass dependency inputs if the task function expects arguments
@@ -97,6 +123,8 @@ class SwarmFlow:
                 span.set_attribute("task.output", str(task.output))
                 span.set_attribute("task.duration_ms", task.execution_time_ms)
                 self._log(task)
+
+        self._finalize_run_status()
 
     def _log(self, task: Task):
         print(f"\n[SwarmFlow] Task: {task.name}")
@@ -125,6 +153,7 @@ class SwarmFlow:
             "duration_ms": task.execution_time_ms,
             "output": output_serialized,  # ✅ fixed - properly serialized
             "metadata": metadata_clean,  # ✅ cleaned - no None values
+            "retry_count": task.retries if task.status == "failure" else getattr(task, "current_retry", 0),  # For failures: total retries used; for successes: attempts taken
             "dependencies": [dep.name for dep in task.dependencies],
         }
 

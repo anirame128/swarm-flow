@@ -13,6 +13,7 @@ class Task:
         self.status = "pending"
         self.execution_time_ms = 0
         self.retries = retries
+        self.current_retry = 0  # Initialize retry counter
         self.failed_due_to_dependency = False
         self.metadata = {}
     
