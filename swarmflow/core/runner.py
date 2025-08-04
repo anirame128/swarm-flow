@@ -18,12 +18,13 @@ from .policy import finalize_run_status
 if TYPE_CHECKING:
     from .task import Task
 
-def run(api_key: str | None = None):
+def run(api_key: str | None = None, policy: dict | None = None):
     """
     Execute all registered tasks in dependency order.
     
     Args:
         api_key: API key for authentication (optional)
+        policy: Policy rules to enforce during execution (optional)
     """
     api_key = api_key or os.getenv("SWARMFLOW_API_KEY")
     
@@ -35,6 +36,10 @@ def run(api_key: str | None = None):
     
     # Create SwarmFlow instance for memory and policy
     flow = SwarmFlow(api_key)
+    
+    # Inject policy if provided
+    if policy:
+        flow.policy.update(policy)
     
     # Build task mapping and inject flow context
     name_to_task = {task.name: task for task in TASK_REGISTRY}

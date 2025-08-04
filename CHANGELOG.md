@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2025-01-04
+
+### Fixed
+- **Policy parameter bug**: Fixed `TypeError: run() got an unexpected keyword argument 'policy'`
+  - Updated `run()` function signature to accept `policy: dict | None = None`
+  - Added policy injection into SwarmFlow instance during execution
+  - Users can now pass policy directly to `run(policy={...})`
+
 ## [0.4.1] - 2025-01-04
 
 ### Added
