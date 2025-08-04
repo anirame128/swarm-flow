@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='swarmflow',
-    version='0.3.4',
+    version='0.4.0',
     description='SwarmFlow: A distributed multi-agent orchestration framework',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -15,7 +15,7 @@ setup(
     maintainer='Anirudh Ramesh',
     maintainer_email='anirudhramesh2021@gmail.com',
     url='https://github.com/anirame128/swarmflow',
-    download_url='https://github.com/anirame128/swarmflow/archive/refs/tags/v0.3.4.tar.gz',
+    download_url='https://github.com/anirame128/swarmflow/archive/refs/tags/v0.4.0.tar.gz',
     packages=find_packages(),
     classifiers=[
         'Development Status :: 3 - Alpha',

@@ -15,7 +15,9 @@ TASK_REGISTRY = []
 
 # Minimal Task object
 class Task:
-    def __init__(self, fn: Callable, retries: int = 0):
+    def __init__(self, fn: Callable, retries: int = 0,
+                 before: Callable = None, after: Callable = None,
+                 on_error: Callable = None, on_final: Callable = None):
         self.fn = fn
         self.name = fn.__name__
         self.id = str(uuid.uuid4())
@@ -29,13 +31,22 @@ class Task:
         self.current_retry = 0
         self.metadata = {}
 
+        # ✅ New hook functions
+        self.before = before
+        self.after = after
+        self.on_error = on_error
+        self.on_final = on_final
+        
+        # ✅ Flow reference for shared memory access
+        self.flow = None  # Will be assigned when added to a SwarmFlow
+
     def add_dependency(self, task: "Task"):
         self.dependencies.append(task)
 
 # Decorator
-def swarm_task(fn=None, *, retries=0):
+def swarm_task(fn=None, *, retries=0, before=None, after=None, on_error=None, on_final=None):
     def wrapper(f):
-        task = Task(f, retries=retries)
+        task = Task(f, retries=retries, before=before, after=after, on_error=on_error, on_final=on_final)
 
         @wraps(f)
         def inner(*args, **kwargs):
@@ -98,19 +109,53 @@ def run(api_key: str | None = None):
             for attempt in range(task.retries + 1):
                 task.current_retry = attempt
                 try:
+                    # ✅ Execute before hooks
+                    if task.before:
+                        if isinstance(task.before, list):
+                            for hook in task.before:
+                                hook(task)
+                        else:
+                            task.before(task)
+                    
                     inputs = [d.output for d in task.dependencies]
                     if task.fn.__code__.co_argcount > 0:
                         task.output = task.fn(*inputs, *task.args, **task.kwargs)
                     else:
                         task.output = task.fn()
+                    
+                    # ✅ Execute after hooks
+                    if task.after:
+                        if isinstance(task.after, list):
+                            for hook in task.after:
+                                hook(task)
+                        else:
+                            task.after(task)
+                    
                     task.status = "success"
                     success = True
                     break
                 except Exception as e:
                     task.output = str(e)
                     task.status = "retrying" if attempt < task.retries else "failure"
+                    
+                    # ✅ Execute on_error hooks
+                    if task.on_error:
+                        if isinstance(task.on_error, list):
+                            for hook in task.on_error:
+                                hook(task, e)
+                        else:
+                            task.on_error(task, e)
 
             task.execution_time_ms = int((time.time() - start) * 1000)
+            
+            # ✅ Execute on_final hooks
+            if task.on_final:
+                if isinstance(task.on_final, list):
+                    for hook in task.on_final:
+                        hook(task)
+                else:
+                    task.on_final(task)
+            
             _extract_metadata(task)
             _log_trace(task, run_id, api_key)
             span.set_attribute("task.status", task.status)

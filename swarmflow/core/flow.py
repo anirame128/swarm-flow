@@ -14,6 +14,8 @@ class SwarmFlow:
     def __init__(self, api_key: str | None = None):
         self.run_id = str(uuid.uuid4())  # Unique per DAG run
         self.api_key = api_key or os.getenv("SWARMFLOW_API_KEY")  # ✅ API key for authentication
+        self.memory = {}  # ✅ Shared memory for all tasks in this DAG run
+        self.policy = {}  # ✅ User-defined DAG-level enforcement rules
         trace.set_tracer_provider(TracerProvider())
         tracer = trace.get_tracer(__name__)
         span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
@@ -23,6 +25,7 @@ class SwarmFlow:
     
     def add(self, fn):
         task = fn._task
+        task.flow = self  # ✅ Inject the DAG context into the task
         self.tasks[task.name] = task
         return self
     
@@ -30,6 +33,24 @@ class SwarmFlow:
         for dep_name in dependency_names:
             self.tasks[task_name].add_dependency(self.tasks[dep_name])
         return self
+    
+    def set_memory(self, key, value):
+        """Set a value in the shared memory"""
+        self.memory[key] = value
+        return self
+    
+    def get_memory(self, key, default=None):
+        """Get a value from the shared memory"""
+        return self.memory.get(key, default)
+    
+    def set_policy(self, key: str, value: Any):
+        """Set a policy rule"""
+        self.policy[key] = value
+        return self
+    
+    def get_policy(self, key: str, default=None):
+        """Get a policy rule"""
+        return self.policy.get(key, default)
 
     def _topological_sort(self):
         visited = set()
@@ -59,20 +80,34 @@ class SwarmFlow:
     
     def _finalize_run_status(self):
         statuses = [task.status for task in self.tasks.values()]
-        if all(s == "success" for s in statuses):
-            run_status = "completed"
-        elif any(s == "failure" for s in statuses):
-            run_status = "failed"
-        else:
-            run_status = "partial"
+        run_status = "completed" if all(s == "success" for s in statuses) else \
+                     "failed" if any(s == "failure" for s in statuses) else "partial"
+
+        # ✅ Enforce policy: abort if memory flag is True
+        flag = self.policy.get("abort_on_flag")
+        if flag and self.memory.get(flag):
+            run_status = "aborted"
+            print(f"[SwarmFlow] 🚨 Policy violation: memory flag '{flag}' is True → aborting run")
+
+        # ✅ Enforce policy: abort if cost exceeds max
+        max_cost = self.policy.get("max_cost")
+        if max_cost:
+            total_cost = sum(t.metadata.get("cost_usd", 0) for t in self.tasks.values())
+            if total_cost > max_cost:
+                run_status = "aborted"
+                print(f"[SwarmFlow] 🚨 Policy violation: total cost ${total_cost:.4f} exceeded max ${max_cost} → aborting run")
+
+        # ✅ Enforce policy: abort if required memory keys are missing
+        required_keys = self.policy.get("require_outputs", [])
+        missing_keys = [k for k in required_keys if self.memory.get(k) is None]
+        if missing_keys:
+            run_status = "aborted"
+            print(f"[SwarmFlow] 🚨 Policy violation: missing required outputs {missing_keys} → aborting run")
 
         try:
             res = requests.patch(
                 "http://localhost:8000/api/runs/update-status",
-                headers={
-                    "Content-Type": "application/json",
-                    "x-api-key": self.api_key or ""
-                },
+                headers={"Content-Type": "application/json", "x-api-key": self.api_key or ""},
                 data=json.dumps({
                     "run_id": self.run_id,
                     "status": run_status,
@@ -104,20 +139,54 @@ class SwarmFlow:
                 for attempt in range(task.retries + 1):
                     task.current_retry = attempt  # NEW LINE
                     try:
+                        # ✅ Execute before hooks
+                        if task.before:
+                            if isinstance(task.before, list):
+                                for hook in task.before:
+                                    hook(task)
+                            else:
+                                task.before(task)
+                        
                         inputs = [dep.output for dep in task.dependencies]
                         # Only pass dependency inputs if the task function expects arguments
                         if task.fn.__code__.co_argcount > 0:
                             task.output = task.fn(*inputs, *task.args, **task.kwargs)
                         else:
                             task.output = task.fn(*task.args, **task.kwargs)
+                        
+                        # ✅ Execute after hooks
+                        if task.after:
+                            if isinstance(task.after, list):
+                                for hook in task.after:
+                                    hook(task)
+                            else:
+                                task.after(task)
+                        
                         task.status = "success"
                         success = True
                         break
                     except Exception as e:
                         task.output = str(e)
                         task.status = "retrying" if attempt < task.retries else "failure"
+                        
+                        # ✅ Execute on_error hooks
+                        if task.on_error:
+                            if isinstance(task.on_error, list):
+                                for hook in task.on_error:
+                                    hook(task, e)
+                            else:
+                                task.on_error(task, e)
 
                 task.execution_time_ms = int((time.time() - start) * 1000)
+                
+                # ✅ Execute on_final hooks
+                if task.on_final:
+                    if isinstance(task.on_final, list):
+                        for hook in task.on_final:
+                            hook(task)
+                    else:
+                        task.on_final(task)
+                
                 self._extract_metadata(task)
                 span.set_attribute("task.status", task.status)
                 span.set_attribute("task.output", str(task.output))
@@ -125,6 +194,21 @@ class SwarmFlow:
                 self._log(task)
 
         self._finalize_run_status()
+        
+        # ✅ Optional Step 1b: Final Memory Snapshot Per Run
+        try:
+            res = requests.post(
+                "http://localhost:8000/api/runs/finalize",
+                headers={"Content-Type": "application/json", "x-api-key": self.api_key or ""},
+                data=json.dumps({
+                    "run_id": self.run_id,
+                    "memory": self.memory,
+                    "policy": self.policy
+                })
+            )
+            res.raise_for_status()
+        except Exception as e:
+            print(f"[SwarmFlow] ⚠️ Failed to finalize memory/policy: {e}")
 
     def _log(self, task: Task):
         print(f"\n[SwarmFlow] Task: {task.name}")
@@ -169,7 +253,12 @@ class SwarmFlow:
             res = requests.post(
                 api_url,
                 headers=headers,
-                data=json.dumps(trace_payload)
+                data=json.dumps({
+                    "run_id": self.run_id,
+                    "trace": trace_payload,
+                    "flow_memory": self.memory,     # ✅ NEW
+                    "flow_policy": self.policy      # ✅ NEW
+                })
             )
             res.raise_for_status()
         except Exception as e:

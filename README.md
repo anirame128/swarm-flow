@@ -13,6 +13,9 @@ A distributed multi-agent orchestration framework for building scalable AI workf
 - **Real-time Monitoring**: Send task traces to your monitoring dashboard
 - **Cycle Detection**: Automatic detection of circular dependencies
 - **Production Ready**: Comprehensive error handling and logging
+- **Hooks System**: Powerful before/after/error/final hooks for custom orchestration logic
+- **Shared Memory**: Cross-task state sharing with `flow.memory`
+- **Policy Enforcement**: DAG-level rules for cost limits, abort conditions, and validation
 
 ## 📦 Installation
 
@@ -125,6 +128,60 @@ run(api_key="sk_abc123...")
 run()  # Shows warning but executes normally
 ```
 
+### Hooks System & Shared Memory
+SwarmFlow now includes a powerful hooks system for custom orchestration logic and shared memory for cross-task state management:
+
+```python
+from swarmflow import swarm_task, run, SwarmFlow
+from swarmflow.hooks import write_output_to_memory, read_memory_into_arg, log_input_output
+
+# Create a flow with shared memory
+flow = SwarmFlow()
+
+@swarm_task(before=log_input_output()[0], after=log_input_output()[1])
+def fetch_data():
+    return "Some data from API"
+
+@swarm_task(after=write_output_to_memory("processed_data"))
+def process_data(fetch_data):
+    return f"Processed: {fetch_data}"
+
+@swarm_task(before=read_memory_into_arg("processed_data", "input_data"))
+def display_result(process_data, input_data=None):
+    print(f"Final result: {process_data}")
+    print(f"From memory: {input_data}")
+
+# Add tasks to flow and run
+flow.add(fetch_data).add(process_data).add(display_result).run()
+```
+
+**Available Hooks:**
+- `before`: Execute before task runs
+- `after`: Execute after task succeeds  
+- `on_error`: Execute when task fails
+- `on_final`: Execute after task completes (success or failure)
+
+**Built-in Hook Utilities:**
+- `write_output_to_memory(key)`: Save task output to shared memory
+- `read_memory_into_arg(mem_key, arg_name)`: Inject memory value into task arguments
+- `log_input_output()`: Log task inputs and outputs
+- `enforce_max_cost(max_usd)`: Abort if total cost exceeds limit
+- `set_flag_on_failure(flag_key)`: Set memory flag when task fails
+- `skip_if_flag_set(flag_key)`: Skip task if memory flag is True
+
+### Policy Enforcement
+Set DAG-level policies for cost limits, abort conditions, and validation:
+
+```python
+flow = SwarmFlow()
+flow.set_policy("max_cost", 0.10)  # Abort if total cost > $0.10
+flow.set_policy("abort_on_flag", "error_detected")  # Abort if flag is True
+flow.set_policy("require_outputs", ["final_result"])  # Abort if missing outputs
+
+# Run with policies enforced
+flow.add(task1).add(task2).run()
+```
+
 ### Real-time Monitoring
 SwarmFlow automatically sends task traces to the SwarmFlow backend service at `http://localhost:8000/api/trace` for real-time monitoring and analytics.
 
@@ -144,7 +201,9 @@ SwarmFlow automatically sends task traces to the SwarmFlow backend service at `h
     "tokens_used": 150,
     "cost_usd": 0.000089
   },
-  "dependencies": ["dep1", "dep2"]
+  "dependencies": ["dep1", "dep2"],
+  "flow_memory": {"key": "value"},  // Shared memory state
+  "flow_policy": {"max_cost": 0.10}  // Active policies
 }
 ```
 

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-01-04
+
+### Added
+- **Comprehensive Hooks System**: Added powerful before/after/error/final hooks for custom orchestration logic
+  - `before`: Execute before task runs
+  - `after`: Execute after task succeeds
+  - `on_error`: Execute when task fails
+  - `on_final`: Execute after task completes (success or failure)
+- **Shared Memory**: Added `flow.memory` for cross-task state sharing within a DAG run
+- **Policy Enforcement**: Added `flow.policy` for DAG-level enforcement rules
+  - `max_cost`: Abort if total cost exceeds limit
+  - `abort_on_flag`: Abort if memory flag is True
+  - `require_outputs`: Abort if required memory keys are missing
+- **Hook Utilities Module**: Created `swarmflow.hooks` with built-in utilities:
+  - `write_output_to_memory(key)`: Save task output to shared memory
+  - `read_memory_into_arg(mem_key, arg_name)`: Inject memory value into task arguments
+  - `log_input_output()`: Log task inputs and outputs
+  - `enforce_max_cost(max_usd)`: Abort if total cost exceeds limit
+  - `set_flag_on_failure(flag_key)`: Set memory flag when task fails
+  - `skip_if_flag_set(flag_key)`: Skip task if memory flag is True
+  - `append_output_to_memory_list(key)`: Append output to memory list
+  - `inject_retry_count_into_arg(arg_name)`: Inject retry count into task arguments
+- **Enhanced API**: Updated `__init__.py` to expose new hooks and SwarmFlow class
+- **Memory Integration**: Trace payloads now include `flow_memory` and `flow_policy` for better observability
+- **Finalization API**: Added `/api/runs/finalize` endpoint for memory/policy snapshot
+
+### Changed
+- **Enhanced Task Execution**: Tasks now support hook execution at different lifecycle stages
+- **Improved Flow Context**: Tasks automatically get access to flow context for memory and policy access
+- **Enhanced Observability**: Trace payloads include shared memory state and active policies
+
 ## [0.3.4] - 2025-01-04
 
 ### Fixed
