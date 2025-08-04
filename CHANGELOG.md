@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2025-01-04
+
+### Fixed
+- **Trace Payload Structure**: Fixed backend rejection by sending trace fields directly at top level
+  - Changed from nested `{"trace": {...}}` to direct `{"id": ..., "name": ..., "status": ...}`
+  - Added debug logging to show exact payload structure being sent
+  - Ensures required fields (`id`, `name`, `status`, `duration_ms`, `output`) are at top level
+  - Backend now receives properly structured trace data for database storage
+
 ## [0.4.4] - 2025-01-04
 
 ### Fixed
