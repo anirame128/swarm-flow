@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-01-04
+
+### Added
+- **Modular Architecture**: Split monolithic task.py into focused modules:
+  - `task.py`: Task class and swarm_task decorator only
+  - `runner.py`: Main execution logic and workflow orchestration
+  - `telemetry.py`: Tracing, logging, and observability
+  - `policy.py`: Run status finalization and policy enforcement
+  - `utils.py`: Shared utilities (topological_sort, validation, mode enforcement)
+- **Enhanced Validation**: Added dependency validation to catch typos and missing tasks
+- **Mode Enforcement**: Added runtime guard to prevent mixing different orchestration modes
+
+### Changed
+- **Improved Code Organization**: Better separation of concerns with focused modules
+- **Enhanced Error Handling**: More descriptive error messages for common issues
+- **Reduced Complexity**: Eliminated redundant code and simplified architecture
+
 ## [0.4.0] - 2025-01-04
 
 ### Added
