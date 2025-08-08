@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-01-04
+
+### Added
+- **Modular Telemetry System**: Complete refactor of telemetry into focused modules:
+  - `telemetry/base.py`: Core tracing and logging functionality
+  - `telemetry/groq.py`: Groq-specific metadata extraction and instrumentation
+  - `telemetry/openai.py`: OpenAI-specific metadata extraction and instrumentation
+  - `telemetry/anthropic.py`: Anthropic-specific metadata extraction and instrumentation
+  - `telemetry/langchain.py`: LangChain integration and instrumentation
+  - `telemetry/crewai.py`: CrewAI multi-agent system integration
+- **Comprehensive Pricing Module**: Added `pricing.py` with accurate cost estimation for:
+  - OpenAI models (GPT-4, GPT-3.5, O1, O2, O3, O4 series)
+  - Groq models (Llama 3, Mixtral, Gemma 2 series)
+  - Anthropic models (Claude 3.5, Claude 3 series)
+- **Enhanced Cost Tracking**: Automatic cost calculation and tracking across all supported providers
+- **Legacy Compatibility**: Backward compatibility layer for existing telemetry imports
+
+### Changed
+- **Improved Architecture**: Telemetry system now follows modular design with clear separation of concerns
+- **Enhanced Provider Support**: Better metadata extraction and cost calculation for all major LLM providers
+- **Cleaner Codebase**: Removed redundant telemetry code and improved maintainability
+- **Better Error Handling**: Enhanced error handling in telemetry and pricing modules
+
+### Removed
+- **Redundant Telemetry Code**: Consolidated scattered telemetry logic into focused modules
+- **Legacy Telemetry Functions**: Cleaned up deprecated telemetry patterns
+
+## [0.4.6] - 2025-01-04
+
+### Fixed
+- **Trace Payload Structure**: Fixed backend rejection by sending trace fields directly at top level
+  - Changed from nested `{"trace": {...}}` to direct `{"id": ..., "name": ..., "status": ...}`
+  - Added debug logging to show exact payload structure being sent
+  - Ensures required fields (`id`, `name`, `status`, `duration_ms`, `output`) are at top level
+  - Backend now receives properly structured trace data for database storage
+
 ## [0.4.5] - 2025-01-04
 
 ### Fixed

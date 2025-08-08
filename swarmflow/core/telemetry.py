@@ -1,122 +1,35 @@
 """
-SwarmFlow Telemetry
+SwarmFlow Telemetry (Legacy Compatibility)
 
-Handles tracing, logging, and observability for task execution.
+This file provides backward compatibility for existing imports.
+All telemetry functionality has been moved to the telemetry/ module.
 """
 
-import json
-import requests
-from typing import Any, Dict, TYPE_CHECKING
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+# Import everything from the new modular telemetry system
+from .telemetry import *
 
-if TYPE_CHECKING:
-    from .task import Task
+# Legacy imports for backward compatibility
+from .telemetry.base import (
+    setup_tracer,
+    log_trace
+)
 
-def setup_tracer():
-    """Set up OpenTelemetry tracer for task execution."""
-    trace.set_tracer_provider(TracerProvider())
-    tracer = trace.get_tracer(__name__)
-    trace.get_tracer_provider().add_span_processor(
-        SimpleSpanProcessor(ConsoleSpanExporter())
-    )
-    return tracer
+from .telemetry.langchain import instrument_langchain_llm
+from .telemetry.crewai import (
+    instrument_crewai,
+    capture_individual_crew_task_call,
+    get_individual_crew_task_calls,
+    clear_individual_crew_task_calls
+)
 
-def log_trace(
-    task: "Task", 
-    run_id: str, 
-    api_key: str | None, 
-    memory: Dict[str, Any] = None, 
-    policy: Dict[str, Any] = None
-):
-    """
-    Log task trace to the SwarmFlow backend.
-    
-    Args:
-        task: The task that was executed
-        run_id: Unique identifier for this DAG run
-        api_key: API key for authentication
-        memory: Shared memory state
-        policy: Active policy rules
-    """
-    def _safe_output(obj):
-        """Safely extract content from ChatCompletion objects or convert to string."""
-        try:
-            if hasattr(obj, "choices") and isinstance(obj.choices, list) and len(obj.choices) > 0:
-                return obj.choices[0].message.content
-            return str(obj)
-        except Exception as e:
-            return f"[SwarmFlow] Output serialization failed: {e}"
-    
-    output = _safe_output(task.output)
-    
-    trace_payload = {
-        "id": task.id,
-        "run_id": run_id,
-        "name": task.name,
-        "status": task.status,
-        "duration_ms": task.execution_time_ms,
-        "output": output,
-        "metadata": _clean_metadata(task.metadata),
-        "retry_count": task.retries if task.status == "failure" else task.current_retry,
-        "dependencies": [d.name for d in task.dependencies],
-    }
+# Expose legacy function names for backward compatibility
+_determine_provider_and_cost = determine_provider_and_cost
+_extract_token_usage = extract_token_usage
+_attach_metadata_to_task = attach_metadata_to_task
+_extract_model_name_from_llm = extract_model_name_from_llm
 
-    try:
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["x-api-key"] = api_key
-            
-            # Prepare the full payload - try both structures
-            full_payload = {
-                "run_id": run_id,
-                "trace": trace_payload,
-                "flow_memory": _safe_dict(memory or {}),
-                "flow_policy": _safe_dict(policy or {})
-            }
-            
-            # Alternative: Direct trace fields (in case backend expects this)
-            direct_payload = {
-                "run_id": run_id,
-                "id": task.id,
-                "name": task.name,
-                "status": task.status,
-                "duration_ms": task.execution_time_ms,
-                "output": output,
-                "metadata": _clean_metadata(task.metadata),
-                "retry_count": task.retries if task.status == "failure" else task.current_retry,
-                "dependencies": [d.name for d in task.dependencies],
-                "flow_memory": _safe_dict(memory or {}),
-                "flow_policy": _safe_dict(policy or {})
-            }
-            
-            # Debug: Print both payload structures
-            print(f"[SwarmFlow] Sending nested trace payload: {json.dumps(full_payload, indent=2)}")
-            print(f"[SwarmFlow] Sending direct trace payload: {json.dumps(direct_payload, indent=2)}")
-            
-            # Try the direct payload first (most likely what backend expects)
-            res = requests.post(
-                "http://localhost:8000/api/trace", 
-                headers=headers, 
-                data=json.dumps(direct_payload)
-            )
-            print(f"[SwarmFlow] Trace post response: {res.status_code} {res.text}")
-        else:
-            print("[SwarmFlow] ⚠️ No API key provided. Skipping trace upload.")
-    except Exception as e:
-        print(f"[SwarmFlow] Failed to send trace: {e}")
-
-def _safe_dict(d: Dict[str, Any]) -> Dict[str, Any]:
-    """Make dictionary JSON serializable by converting non-serializable values to strings."""
-    def make_jsonable(v):
-        try:
-            json.dumps(v)
-            return v
-        except:
-            return str(v)
-    return {k: make_jsonable(v) for k, v in d.items()}
-
-def _clean_metadata(obj: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove None values from metadata for JSON serialization."""
-    return {k: v for k, v in obj.items() if v is not None} 
+# Legacy compatibility for direct imports
+def log_individual_crew_traces(*args, **kwargs):
+    """Legacy function - delegates to new modular system."""
+    from .telemetry.crewai import log_individual_crew_traces
+    return log_individual_crew_traces(*args, **kwargs)

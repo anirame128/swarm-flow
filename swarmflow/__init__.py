@@ -12,6 +12,13 @@ from .hooks import (
     inject_retry_count_into_arg,
 )
 
+# Initialize LangChain instrumentation automatically
+try:
+    from .core.telemetry import instrument_langchain_llm
+    instrument_langchain_llm()
+except Exception as e:
+    print(f"[SwarmFlow] ⚠️ Failed to initialize LangChain instrumentation: {e}")
+
 __all__ = [
     "swarm_task", 
     "run", 

@@ -1,14 +1,16 @@
 """
-SwarmFlow Core Utilities
+SwarmFlow Utilities
 
-Shared utilities for task orchestration, dependency resolution, and validation.
+Utility functions for SwarmFlow operations.
 """
 
 from typing import List, TYPE_CHECKING
 from .task import Task
 
 if TYPE_CHECKING:
-    pass  # Task is now imported directly
+    pass
+
+# Core task orchestration utilities
 
 def topological_sort(tasks: List[Task]) -> List[Task]:
     """
@@ -84,4 +86,4 @@ def enforce_single_mode(mode: str) -> None:
     USED_MODE = mode
 
 # Global state for mode enforcement
-USED_MODE = None 
+USED_MODE = None

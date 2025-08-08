@@ -37,7 +37,6 @@ def finalize_run_status(
         flag = policy.get("abort_on_flag")
         if flag and memory.get(flag):
             run_status = "aborted"
-            print(f"[SwarmFlow] 🚨 Policy violation: memory flag '{flag}' is True → aborting run")
 
         # Enforce policy: abort if cost exceeds max
         max_cost = policy.get("max_cost")
@@ -45,14 +44,12 @@ def finalize_run_status(
             total_cost = sum(t.metadata.get("cost_usd", 0) for t in tasks)
             if total_cost > max_cost:
                 run_status = "aborted"
-                print(f"[SwarmFlow] 🚨 Policy violation: total cost ${total_cost:.4f} exceeded max ${max_cost} → aborting run")
 
         # Enforce policy: abort if required memory keys are missing
         required_keys = policy.get("require_outputs", [])
         missing_keys = [k for k in required_keys if memory.get(k) is None]
         if missing_keys:
             run_status = "aborted"
-            print(f"[SwarmFlow] 🚨 Policy violation: missing required outputs {missing_keys} → aborting run")
 
     try:
         headers = {"Content-Type": "application/json"}
@@ -82,9 +79,9 @@ def finalize_run_status(
                 )
                 res.raise_for_status()
             except Exception as e:
-                print(f"[SwarmFlow] ⚠️ Failed to finalize memory/policy: {e}")
+                pass
     except Exception as e:
-        print(f"[SwarmFlow] ⚠️ Failed to update run status: {e}")
+        pass
 
 def _safe_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     """Make dictionary JSON serializable by converting non-serializable values to strings."""

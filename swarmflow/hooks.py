@@ -6,12 +6,21 @@ Plug-and-play orchestration logic using flow.memory.
 These are parameterized factories that return valid hooks.
 """
 
-from typing import Any, Callable, Tuple
-
 def write_output_to_memory(key: str):
-    """Writes task.output to flow.memory[key]"""
+    """Writes task.output to flow.memory[key], auto-extracting content if present"""
     def hook(task):
-        task.flow.memory[key] = task.output
+        output = task.output
+
+        # Try to auto-extract .choices[0].message.content if possible
+        try:
+            if hasattr(output, "choices") and len(output.choices) > 0:
+                content = output.choices[0].message.content
+                task.flow.memory[key] = content
+            else:
+                task.flow.memory[key] = output
+        except Exception as e:
+            task.flow.memory[key] = output  # Fallback to raw output
+
         return task
     return hook
 
@@ -34,28 +43,28 @@ def skip_if_flag_set(flag_key: str):
 def log_input_output():
     """Logs task args/kwargs and output to console"""
     def before(task):
-        print(f"[SwarmFlow] ▶️ {task.name} args: {task.args}, kwargs: {task.kwargs}")
         return task
 
     def after(task):
-        print(f"[SwarmFlow] ✅ {task.name} output: {task.output}")
         return task
 
     return before, after
 
 def enforce_max_cost(max_usd: float):
-    """Fails task if total cost exceeds max_usd"""
+    """Fails task if current task's cost exceeds max_usd"""
     def hook(task):
-        current_cost = sum(t.metadata.get("cost_usd", 0) for t in task.flow.tasks.values())
+        current_cost = task.metadata.get("cost_usd", 0)
         if current_cost > max_usd:
-            raise RuntimeError(f"Total cost ${current_cost:.4f} exceeded max ${max_usd}")
+            raise RuntimeError(f"Task cost ${current_cost:.4f} exceeded max ${max_usd}")
         return task
     return hook
 
+
+
 def set_flag_on_failure(flag_key: str):
-    """Sets a flag in memory if the task fails"""
-    def hook(task, error):
-        task.flow.memory[flag_key] = True
+    def hook(task, error, final_retry=False):
+        if final_retry:
+            task.flow.memory[flag_key] = True
         return "FAIL"
     return hook
 

@@ -1,12 +1,7 @@
-import time
-import requests
-import json
 import os
 import uuid
 from typing import Any
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+
 
 class SwarmFlow:
     """SwarmFlow instance for shared memory and policy enforcement only.
@@ -14,7 +9,8 @@ class SwarmFlow:
     
     def __init__(self, api_key: str | None = None):
         self.run_id = str(uuid.uuid4())  # Unique per DAG run
-        self.api_key = api_key or os.getenv("SWARMFLOW_API_KEY")
+        # Enforce environment-only API key usage
+        self.api_key = os.getenv("SWARMFLOW_API_KEY")
         self.memory = {}  # Shared memory for all tasks in this DAG run
         self.policy = {}  # User-defined DAG-level enforcement rules
     
