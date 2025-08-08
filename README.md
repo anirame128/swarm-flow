@@ -13,6 +13,11 @@ A distributed multi-agent orchestration framework for building scalable AI workf
 - **Real-time Monitoring**: Send task traces to your monitoring dashboard
 - **Cycle Detection**: Automatic detection of circular dependencies
 - **Production Ready**: Comprehensive error handling and logging
+- **Hooks System**: Powerful before/after/error/final hooks for custom orchestration logic
+- **Shared Memory**: Cross-task state sharing with `flow.memory`
+- **Policy Enforcement**: DAG-level rules for cost limits, abort conditions, and validation
+- **Modular Telemetry**: Comprehensive provider support with automatic metadata extraction
+- **Cost Tracking**: Automatic cost calculation and tracking across all major LLM providers
 
 ## 📦 Installation
 
@@ -80,13 +85,14 @@ def final_step(step1, step2, step3):
 run()
 ```
 
-### Auto-Extracted Groq Metadata
+### Multi-Provider LLM Support
 ```python
 from groq import Groq
+from openai import OpenAI
+from anthropic import Anthropic
 
 @swarm_task
-def llm_task():
-    # This will automatically extract metadata from Groq responses
+def groq_task():
     client = Groq()
     response = client.chat.completions.create(
         model="llama-3-70b",
@@ -94,20 +100,38 @@ def llm_task():
     )
     return response
 
-# SwarmFlow automatically detects and extracts:
-# - Model name (llama-3-70b, llama-4-scout-17b, etc.)
-# - Provider (Groq)
+@swarm_task
+def openai_task():
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+    return response
+
+@swarm_task
+def anthropic_task():
+    client = Anthropic()
+    response = client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=100,
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+    return response
+
+# SwarmFlow automatically detects and extracts metadata from all providers:
+# - Model name and provider identification
 # - Token usage (prompt + completion tokens)
-# - Precise cost calculation (USD)
+# - Precise cost calculation (USD) using current pricing
 # - Timing metrics (queue, prompt, completion, total time)
 # - All added to task.metadata automatically
 
 # Example output with metadata:
-# [SwarmFlow] Task: llm_task
+# [SwarmFlow] Task: groq_task
 #   ↳ Status: success
 #   ↳ Duration: 1234 ms
 #   ↳ Output: <Groq ChatCompletion object>
-#   ↳ Metadata: {'agent': 'LLMProcessor', 'provider': 'Groq', 'model': 'llama-3-70b', 'tokens_used': 150, 'cost_usd': 0.000089, 'queue_time_s': 0.1, 'prompt_time_s': 0.5, 'completion_time_s': 0.8, 'total_time_s': 1.4}
+#   ↳ Metadata: {'provider': 'Groq', 'model': 'llama-3-70b', 'tokens_used': 150, 'cost_usd': 0.000089, 'queue_time_s': 0.1, 'prompt_time_s': 0.5, 'completion_time_s': 0.8, 'total_time_s': 1.4}
 ```
 
 ### API Key Configuration
@@ -123,6 +147,66 @@ run(api_key="sk_abc123...")
 
 # Option 3: No key (logs warning but continues)
 run()  # Shows warning but executes normally
+```
+
+### Hooks System & Shared Memory
+SwarmFlow now includes a powerful hooks system for custom orchestration logic and shared memory for cross-task state management:
+
+```python
+from swarmflow import swarm_task, run
+from swarmflow.hooks import write_output_to_memory, read_memory_into_arg, log_input_output
+
+@swarm_task(before=log_input_output()[0], after=log_input_output()[1])
+def fetch_data():
+    return "Some data from API"
+
+@swarm_task(after=write_output_to_memory("processed_data"))
+def process_data(fetch_data):
+    return f"Processed: {fetch_data}"
+
+@swarm_task(before=read_memory_into_arg("processed_data", "input_data"))
+def display_result(process_data, input_data=None):
+    print(f"Final result: {process_data}")
+    print(f"From memory: {input_data}")
+
+# Run workflow - that's it!
+run()
+```
+
+**Available Hooks:**
+- `before`: Execute before task runs
+- `after`: Execute after task succeeds  
+- `on_error`: Execute when task fails
+- `on_final`: Execute after task completes (success or failure)
+
+**Built-in Hook Utilities:**
+- `write_output_to_memory(key)`: Save task output to shared memory
+- `read_memory_into_arg(mem_key, arg_name)`: Inject memory value into task arguments
+- `log_input_output()`: Log task inputs and outputs
+- `enforce_max_cost(max_usd)`: Abort if total cost exceeds limit
+- `set_flag_on_failure(flag_key)`: Set memory flag when task fails
+- `skip_if_flag_set(flag_key)`: Skip task if memory flag is True
+
+### Policy Enforcement
+Set DAG-level policies for cost limits, abort conditions, and validation:
+
+```python
+from swarmflow import swarm_task, run
+
+@swarm_task
+def task1():
+    return "Task 1 result"
+
+@swarm_task
+def task2(task1):
+    return "Task 2 result"
+
+# Run with policies enforced
+run(policy={
+    "max_cost": 0.10,  # Abort if total cost > $0.10
+    "abort_on_flag": "error_detected",  # Abort if flag is True
+    "require_outputs": ["final_result"]  # Abort if missing outputs
+})
 ```
 
 ### Real-time Monitoring
@@ -144,7 +228,9 @@ SwarmFlow automatically sends task traces to the SwarmFlow backend service at `h
     "tokens_used": 150,
     "cost_usd": 0.000089
   },
-  "dependencies": ["dep1", "dep2"]
+  "dependencies": ["dep1", "dep2"],
+  "flow_memory": {"key": "value"},  // Shared memory state
+  "flow_policy": {"max_cost": 0.10}  // Active policies
 }
 ```
 
@@ -154,7 +240,8 @@ SwarmFlow automatically provides:
 - **Performance metrics** (execution time, success rates)
 - **Dependency visualization** and cycle detection
 - **Error tracking** and failure propagation
-- **Auto-extracted Groq metadata** (model, provider, token usage, precise cost calculation, timing metrics)
+- **Multi-provider metadata extraction** (Groq, OpenAI, Anthropic with precise cost calculation and timing metrics)
+- **Comprehensive cost tracking** across all supported LLM providers
 
 ## 🏗️ Architecture
 
@@ -175,9 +262,9 @@ Get comprehensive insights into your multi-agent workflows:
 - **Real-time execution** monitoring
 - **Performance analytics** and optimization
 - **Error tracking** and debugging
-- **Cost analysis** for LLM usage (auto-calculated)
+- **Cost analysis** for LLM usage (auto-calculated across all providers)
 - **Workflow visualization** and dependency graphs
-- **Groq metadata extraction** (comprehensive model support with timing and cost analytics)
+- **Multi-provider metadata extraction** (Groq, OpenAI, Anthropic with comprehensive model support)
 - **DAG run tracking** with unique run_id for grouping and analytics
 
 ## 🚀 Deployment Configuration
